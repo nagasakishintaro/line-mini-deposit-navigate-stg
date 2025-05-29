@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>振替口座登録</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        .header {
+            background-color: white;
+            text-align: center;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 0.05em;
+        }
+        
+        .container {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .content-box {
+            background-color: white;
+            border-radius: 12px;
+            padding: 24px 20px;
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .description {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .notice-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            background-color: #fafafa;
+        }
+        
+        .notice-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .notice-list {
+            list-style: none;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #666;
+        }
+        
+        .notice-list li {
+            margin-bottom: 8px;
+            padding-left: 16px;
+            position: relative;
+        }
+        
+        .notice-list li:last-child {
+            margin-bottom: 0;
+        }
+        
+        .notice-list li:before {
+            content: "・";
+            position: absolute;
+            left: 0;
+            color: #333;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .button {
+            padding: 16px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            width: 100%;
+            -webkit-appearance: none;
+            touch-action: manipulation;
+        }
+        
+        .button-back {
+            background-color: #5cb3a6;
+            color: white;
+        }
+        
+        .button-back:active {
+            background-color: #4a9891;
+            transform: scale(0.98);
+        }
+        
+        .button-web {
+            background-color: #5cb3a6;
+            color: white;
+        }
+        
+        .button-web:active {
+            background-color: #4a9891;
+            transform: scale(0.98);
+        }
+        
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .icon {
+            font-size: 18px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #5cb3a6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* タブレット対応 */
+        @media (min-width: 640px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .container {
+                padding: 24px;
+            }
+            
+            .content-box {
+                padding: 32px;
+            }
+            
+            .description {
+                font-size: 15px;
+            }
+            
+            .notice-box {
+                padding: 20px;
+            }
+            
+            .notice-title {
+                font-size: 15px;
+            }
+            
+            .notice-list {
+                font-size: 14px;
+            }
+            
+            .button-group {
+                flex-direction: row;
+                gap: 16px;
+            }
+            
+            .button {
+                flex: 1;
+            }
+        }
+        
+        /* 横向き対応 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .header {
+                padding: 12px 20px;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .container {
+                padding: 12px;
+            }
+            
+            .content-box {
+                padding: 20px;
+            }
+            
+            .notice-box {
+                margin: 16px 0;
+            }
+            
+            .button-group {
+                flex-direction: row;
+                margin-top: 16px;
+            }
+            
+            .button {
+                flex: 1;
+                padding: 14px 16px;
+            }
+        }
+        
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+            }
+            
+            .header {
+                background-color: #2a2a2a;
+            }
+            
+            .header h1 {
+                color: #f0f0f0;
+            }
+            
+            .content-box {
+                background-color: #2a2a2a;
+                color: #f0f0f0;
+            }
+            
+            .description {
+                color: #f0f0f0;
+            }
+            
+            .notice-box {
+                background-color: #333;
+                border-color: #444;
+            }
+            
+            .notice-title {
+                color: #f0f0f0;
+            }
+            
+            .notice-list {
+                color: #ccc;
+            }
+            
+            .notice-list li:before {
+                color: #f0f0f0;
+            }
+        }
+        
+        /* セーフエリア対応（iPhone X以降） */
+        @supports (padding: max(0px)) {
+            .container {
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+                padding-bottom: max(16px, env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>振替口座登録</h1>
+    </div>
+    
+    <div class="container">
+        <div class="content-box">
+            <p class="description">
+                口座振替の登録を行います。以下の「ご利用にあたり」をご確認の上、お手続きにお進みください。
+            </p>
+            
+            <div class="notice-box">
+                <div class="notice-title">【ご利用にあたり】</div>
+                <ul class="notice-list">
+                    <li>当サービスご利用については、取扱不動産会社へお問い合わせください。</li>
+                    <li>ご登録いただいた口座情報は当社へも登録されるものとします。</li>
+                    <li>お手続きには、保証番号が必要となります。お手元に、保証番号が記載された保証委託契約書をご用意の上お手続きにお進みください。</li>
+                    <li>登録する口座が法人の場合、WEB口座振替は対応できません。</li>
+                </ul>
+            </div>
+            
+            <div class="button-group">
+                <button type="button" class="button button-back" onclick="history.back()">
+                    <span class="icon">↩</span>
+                    <span>戻る</span>
+                </button>
+                <button type="button" class="button button-web" id="submitBtn">
+                    <span class="icon">💳</span>
+                    <span>WEB口座登録へ</span>
+                </button>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <span>処理中です。しばらくお待ちください...</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 隠しフォーム（SMBCへ送信） -->
+    <form id="smbcForm" action="https://www.paymentstation.jp/customertest/sf/at/kokkzmoshikomi/begin.do" method="post" accept-charset="Shift_JIS" style="display: none;">
+        <input type="hidden" name="version" value="130">
+        <input type="hidden" name="shop_cd" value="4167125">
+        <input type="hidden" name="syuno_co_cd" value="52975">
+        <input type="hidden" name="shoporder_no" value="999">
+        <input type="hidden" name="shop_pwd" value="zxf92ncmrd8k">
+        <input type="hidden" name="koushin_kbn" value="1">
+        <input type="hidden" name="bill_no" id="bill_no" value="">
+        <input type="hidden" name="bill_name" id="bill_name" value="">
+        <input type="hidden" name="bill_kana" id="bill_kana" value="">
+        <input type="hidden" name="bill_zip" value="">
+        <input type="hidden" name="bill_adr_1" value="">
+        <input type="hidden" name="bill_phon" value="">
+        <input type="hidden" name="bill_mail" value="">
+        <input type="hidden" name="bill_mail_kbn" value="1">
+        <input type="hidden" name="redirect_kbn" value="0">
+        <input type="hidden" name="redirect_sec" value="10">
+        <input type="hidden" name="shop_phon_hyoji_kbn" value="1">
+        <input type="hidden" name="shop_mail_hyoji_kbn" value="1">
+        <input type="hidden" name="bill_method" value="01">
+        <input type="hidden" name="kessai_id" value="0101">
+        <input type="hidden" name="fs" value="1f8be861aca43d80da1a22467cc73fcabbcdeba3fc3789f57d8ccbc418bc4587">
+        <input type="hidden" name="shop_link" value="http://127.0.0.1:8000/api/">
+        <input type="hidden" name="shop_error_link" value="http://18.179.157.221:3000/smbc/error">
+        <input type="hidden" name="shop_res_link" value="https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result">
+    </form>
+    
+    <script>
+        // URLパラメータから値を取得
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                bill_no: params.get('bill_no'),
+                bill_name: params.get('bill_name'),
+                bill_kana: params.get('bill_kana')
+            };
+        }
+        
+        // ページ読み込み時にパラメータをセット
+        window.addEventListener('DOMContentLoaded', function() {
+            const params = getUrlParams();
+            
+            if (params.bill_no && params.bill_name && params.bill_kana) {
+                document.getElementById('bill_no').value = params.bill_no;
+                document.getElementById('bill_name').value = params.bill_name;
+                document.getElementById('bill_kana').value = params.bill_kana;
+            } else {
+                alert('必要なパラメータが不足しています。');
+                document.getElementById('submitBtn').disabled = true;
+            }
+        });
+        
+        // WEB口座登録ボタンのクリック処理
+        document.getElementById('submitBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const params = getUrlParams();
+            
+            // パラメータの再確認
+            if (!params.bill_no || !params.bill_name || !params.bill_kana) {
+                alert('必要な情報が不足しています。前の画面からやり直してください。');
+                return;
+            }
+            
+            // ローディング表示
+            document.getElementById('loading').style.display = 'block';
+            this.disabled = true;
+            
+            // ボタンを押した感触のフィードバック
+            navigator.vibrate && navigator.vibrate(10);
+            
+            // フォームを送信
+            setTimeout(function() {
+                document.getElementById('smbcForm').submit();
+            }, 500); // 少し遅延を入れてローディング表示を見せる
+        });
+        
+        // タッチデバイスでのホバー効果を防ぐ
+        if ('ontouchstart' in window) {
+            document.body.classList.add('touch-device');
+        }
+    </script>
+</body>
+</html>
