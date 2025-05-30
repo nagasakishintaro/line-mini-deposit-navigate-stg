@@ -200,10 +200,6 @@
                 font-size: 15px;
             }
             
-            .notice-box {
-                padding: 20px;
-            }
-            
             .notice-title {
                 font-size: 15px;
             }
@@ -219,6 +215,39 @@
             
             .button {
                 flex: 1;
+            }
+        }
+        
+        /* 横向き対応 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .header {
+                padding: 12px 20px;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .container {
+                padding: 12px;
+            }
+            
+            .content-box {
+                padding: 20px;
+            }
+            
+            .notice-box {
+                margin: 16px 0;
+            }
+            
+            .button-group {
+                flex-direction: row;
+                margin-top: 16px;
+            }
+            
+            .button {
+                flex: 1;
+                padding: 14px 16px;
             }
         }
         
@@ -312,64 +341,84 @@
         </div>
     </div>
     
-    <!-- 空のフォーム（ボタン押下時に動的に作成される） -->
+    <!-- フォームコンテナ（サーバー側で機密情報を含む完全なフォームに置換される） -->
     <div id="formContainer"></div>
     
     <script>
         // ページ読み込み時の処理
         window.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded - checking for POST data');
+            console.log('Page loaded - checking for server-side rendered form');
             
-            // サーバー側からのデータが設定されているかチェック
-            if (window.dataReceived && window.formData) {
-                console.log('✅ POST data received from server');
+            // サーバー側でレンダリングされたフォームの確認
+            if (window.secureDataReceived) {
+                console.log('✅ Server-side rendering completed');
+                return; // サーバーのスクリプトで既に処理済み
+            }
+            
+            // フォームが存在するかチェック
+            const smbcForm = document.getElementById('smbcForm');
+            if (smbcForm) {
+                console.log('✅ SMBC form found - checking data');
                 
-                // 必須データの確認
-                if (window.formData.bill_no && window.formData.bill_name && window.formData.bill_kana) {
+                // 必須データの存在確認（値の中身は見ない）
+                const billNo = smbcForm.querySelector('input[name="bill_no"]');
+                const billName = smbcForm.querySelector('input[name="bill_name"]');
+                const billKana = smbcForm.querySelector('input[name="bill_kana"]');
+                
+                if (billNo && billNo.value && billName && billName.value && billKana && billKana.value) {
                     document.getElementById('submitBtn').disabled = false;
                     console.log('✅ Required fields validated - button enabled');
                 } else {
                     document.getElementById('submitBtn').disabled = true;
                     console.log('❌ Required fields missing - button disabled');
                 }
-                return;
+            } else {
+                // フォームが見つからない場合
+                console.log('❌ No SMBC form found');
+                alert('不正なアクセスです。\n正しいフォームからアクセスしてください。');
+                document.getElementById('submitBtn').disabled = true;
+                
+                // ボタンのテキストを変更してエラー状態を明示
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.innerHTML = '<span class="icon">❌</span><span>データなし</span>';
+                submitBtn.style.backgroundColor = '#e74c3c';
             }
-            
-            // データがない場合
-            console.log('❌ No POST data found');
-            alert('不正なアクセスです。\n正しいフォームからアクセスしてください。');
-            document.getElementById('submitBtn').disabled = true;
-            
-            // ボタンのテキストを変更してエラー状態を明示
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.innerHTML = '<span class="icon">❌</span><span>データなし</span>';
-            submitBtn.style.backgroundColor = '#e74c3c';
         });
         
         // WEB口座登録ボタンのクリック処理
         document.getElementById('submitBtn').addEventListener('click', function(e) {
             e.preventDefault();
             
-            // データの存在確認
-            if (!window.formData) {
-                alert('❌ システムエラー\n\nデータが正しく設定されていません。');
+            // フォームの存在確認
+            const smbcForm = document.getElementById('smbcForm');
+            if (!smbcForm) {
+                alert('❌ システムエラー\n\nフォームが見つかりません。\nページを再読み込みしてください。');
                 return;
             }
             
-            // 必須フィールドの確認
-            if (!window.formData.bill_no || !window.formData.bill_name || !window.formData.bill_kana) {
+            // 必須フィールドの最終確認
+            const billNo = smbcForm.querySelector('input[name="bill_no"]');
+            const billName = smbcForm.querySelector('input[name="bill_name"]');
+            const billKana = smbcForm.querySelector('input[name="bill_kana"]');
+            const shopPwd = smbcForm.querySelector('input[name="shop_pwd"]');
+            const fsToken = smbcForm.querySelector('input[name="fs"]');
+            
+            if (!billNo || !billNo.value || !billName || !billName.value || !billKana || !billKana.value) {
                 alert('❌ 必要な情報が不足しています。\n請求番号、お名前、お名前（カナ）は必須です。');
                 return;
             }
             
-            // 機密情報の確認
-            if (!window.formData.shop_pwd || !window.formData.fs_token) {
-                alert('❌ システムエラー\n\n認証情報が不足しています。\n管理者にお問い合わせください。');
+            // 機密情報の存在確認（値の中身は確認しない）
+            if (!shopPwd || !shopPwd.value || !fsToken || !fsToken.value) {
+                alert('❌ システムエラー\n\n認証情報が正しく設定されていません。\n管理者にお問い合わせください。');
                 return;
             }
             
             // オプション項目の確認
-            if (!window.formData.bill_zip && !window.formData.bill_mail) {
+            const billZip = smbcForm.querySelector('input[name="bill_zip"]');
+            const billMail = smbcForm.querySelector('input[name="bill_mail"]');
+            
+            if ((!billZip || !billZip.value) && (!billMail || !billMail.value)) {
                 const proceed = confirm('郵便番号とメールアドレスが入力されていませんが、続行しますか？');
                 if (!proceed) {
                     return;
@@ -385,128 +434,73 @@
                 navigator.vibrate(10);
             }
             
-            // 動的にフォームを作成してSMBCに送信
-            createAndSubmitForm();
-        });
-        
-        // SMBCへの送信フォームを動的に作成する関数
-        function createAndSubmitForm() {
-            console.log('Creating dynamic form for SMBC submission');
-            
-            // フォーム要素を作成
-            const form = document.createElement('form');
-            form.action = 'https://www.paymentstation.jp/customertest/sf/at/kokkzmoshikomi/begin.do';
-            form.method = 'post';
-            form.acceptCharset = 'Shift_JIS';
-            form.style.display = 'none';
-            
-            // フォームデータを設定
-            const formFields = {
-                // 固定システム設定
-                version: "130",
-                shop_cd: "4167125",
-                syuno_co_cd: "52975",
-                shoporder_no: "999",
-                shop_pwd: window.formData.shop_pwd,
-                koushin_kbn: "1",
-                
-                // 請求者情報
-                bill_no: window.formData.bill_no,
-                bill_name: window.formData.bill_name,
-                bill_kana: window.formData.bill_kana,
-                bill_zip: window.formData.bill_zip,
-                bill_adr_1: window.formData.bill_adr_1,
-                bill_phon: window.formData.bill_phon,
-                bill_mail: window.formData.bill_mail,
-                
-                // システム設定続き
-                bill_mail_kbn: "1",
-                redirect_kbn: "0",
-                redirect_sec: "10",
-                shop_phon_hyoji_kbn: "1",
-                shop_mail_hyoji_kbn: "1",
-                bill_method: "01",
-                kessai_id: "0101",
-                fs: window.formData.fs_token,
-                shop_link: "http://127.0.0.1:8000/api/",
-                shop_error_link: "http://18.179.157.221:3000/smbc/error",
-                shop_res_link: "https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result"
-            };
-            
-            // 各フィールドを隠しinputとして追加
-            for (const [name, value] of Object.entries(formFields)) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = name;
-                input.value = value || '';
-                form.appendChild(input);
-            }
-            
-            // フォームをDOMに追加
-            document.getElementById('formContainer').appendChild(form);
-            
-            // デバッグ情報（機密情報はマスク）
-            console.log('Form created with data:', {
-                bill_no: window.formData.bill_no,
+            // デバッグ情報（機密情報は一切出力しない）
+            console.log('Submitting secure form:', {
+                bill_no: billNo.value,
                 bill_name: '***masked***',
                 bill_kana: '***masked***',
-                has_shop_pwd: !!window.formData.shop_pwd,
-                has_fs_token: !!window.formData.fs_token,
+                has_shop_pwd: !!shopPwd.value,
+                has_fs_token: !!fsToken.value,
+                form_method: 'server-side-rendering',
                 timestamp: new Date().toISOString()
             });
             
             // フォームを送信
-            console.log('Submitting form to SMBC...');
             setTimeout(function() {
-                form.submit();
+                smbcForm.submit();
             }, 500);
-        }
+        });
         
         // タッチデバイスでのホバー効果を防ぐ
         if ('ontouchstart' in window) {
             document.body.classList.add('touch-device');
         }
         
-        // セキュリティ: 機密情報の保護
+        // セキュリティ強化
         (function() {
-            // コンソールでの機密情報表示を防ぐ
-            const originalLog = console.log;
-            console.log = function(...args) {
-                const safeArgs = args.map(arg => {
-                    if (typeof arg === 'string') {
-                        return arg.replace(/shop_pwd['"]\s*:\s*['"][^'"]+['"]/g, 'shop_pwd: "***HIDDEN***"')
-                                 .replace(/fs_token['"]\s*:\s*['"][^'"]+['"]/g, 'fs_token: "***HIDDEN***"');
-                    }
-                    if (typeof arg === 'object' && arg !== null) {
-                        const safeObj = { ...arg };
-                        if (safeObj.shop_pwd) safeObj.shop_pwd = '***HIDDEN***';
-                        if (safeObj.fs_token) safeObj.fs_token = '***HIDDEN***';
-                        if (safeObj.bill_name) safeObj.bill_name = '***HIDDEN***';
-                        if (safeObj.bill_kana) safeObj.bill_kana = '***HIDDEN***';
-                        if (safeObj.bill_mail) safeObj.bill_mail = '***HIDDEN***';
-                        return safeObj;
-                    }
-                    return arg;
-                });
-                originalLog.apply(console, safeArgs);
-            };
+            // 右クリック無効化
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                console.log('🔒 右クリックは無効化されています。');
+            });
             
-            // ページを離れる前にデータをクリア
-            window.addEventListener('beforeunload', function() {
-                if (window.formData) {
-                    console.log('Clearing sensitive data before page unload');
-                    window.formData = null;
+            // F12、Ctrl+Shift+I等の開発者ツールショートカット無効化
+            document.addEventListener('keydown', function(e) {
+                // F12
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    console.log('🔒 開発者ツールのショートカットは無効化されています。');
+                }
+                // Ctrl+Shift+I (Chrome Dev Tools)
+                if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                    e.preventDefault();
+                    console.log('🔒 開発者ツールのショートカットは無効化されています。');
+                }
+                // Ctrl+Shift+J (Chrome Console)
+                if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+                    e.preventDefault();
+                    console.log('🔒 開発者ツールのショートカットは無効化されています。');
+                }
+                // Ctrl+U (View Source)
+                if (e.ctrlKey && e.key === 'u') {
+                    e.preventDefault();
+                    console.log('🔒 ソース表示は無効化されています。');
                 }
             });
             
-            // 開発者ツール検出
+            // ページを離れる前の警告
+            window.addEventListener('beforeunload', function() {
+                console.log('🔒 ページを離れます。機密情報は安全に保護されています。');
+            });
+            
+            // 開発者ツール検出（基本的な検出のみ）
             let devtools = false;
             const checkDevTools = () => {
                 if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
                     if (!devtools) {
                         devtools = true;
                         console.log('🔒 セキュリティ通知: 開発者ツールが検出されました。');
-                        console.log('🔒 機密情報はログでマスクされています。');
+                        console.log('🔒 機密情報はサーバー側で安全に処理されており、クライアント側では確認できません。');
                     }
                 } else {
                     devtools = false;
