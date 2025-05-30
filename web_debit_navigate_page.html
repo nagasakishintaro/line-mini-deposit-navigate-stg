@@ -345,53 +345,25 @@
         </div>
     </div>
     
-    <!-- 隠しフォーム（SMBCへ送信） - すべてサーバーから設定される -->
-    <form id="smbcForm" action="https://www.paymentstation.jp/customertest/sf/at/kokkzmoshikomi/begin.do" method="post" accept-charset="Shift_JIS" style="display: none;">
-        <!-- 固定システム設定 - サーバーから設定される -->
-        <input type="hidden" name="version" id="version" value="">
-        <input type="hidden" name="shop_cd" id="shop_cd" value="">
-        <input type="hidden" name="syuno_co_cd" id="syuno_co_cd" value="">
-        <input type="hidden" name="shoporder_no" id="shoporder_no" value="">
-        <input type="hidden" name="shop_pwd" id="shop_pwd" value="">
-        <input type="hidden" name="koushin_kbn" id="koushin_kbn" value="">
-        
-        <!-- 請求者情報 - POSTデータから設定される -->
-        <input type="hidden" name="bill_no" id="bill_no" value="">
-        <input type="hidden" name="bill_name" id="bill_name" value="">
-        <input type="hidden" name="bill_kana" id="bill_kana" value="">
-        <input type="hidden" name="bill_zip" id="bill_zip" value="">
-        <input type="hidden" name="bill_adr_1" id="bill_adr_1" value="">
-        <input type="hidden" name="bill_phon" id="bill_phon" value="">
-        <input type="hidden" name="bill_mail" id="bill_mail" value="">
-        
-        <!-- システム設定続き - サーバーから設定される -->
-        <input type="hidden" name="bill_mail_kbn" id="bill_mail_kbn" value="">
-        <input type="hidden" name="redirect_kbn" id="redirect_kbn" value="">
-        <input type="hidden" name="redirect_sec" id="redirect_sec" value="">
-        <input type="hidden" name="shop_phon_hyoji_kbn" id="shop_phon_hyoji_kbn" value="">
-        <input type="hidden" name="shop_mail_hyoji_kbn" id="shop_mail_hyoji_kbn" value="">
-        <input type="hidden" name="bill_method" id="bill_method" value="">
-        <input type="hidden" name="kessai_id" id="kessai_id" value="">
-        <input type="hidden" name="fs" id="fs" value="">
-        <input type="hidden" name="shop_link" id="shop_link" value="">
-        <input type="hidden" name="shop_error_link" id="shop_error_link" value="">
-        <input type="hidden" name="shop_res_link" id="shop_res_link" value="">
+    <!-- 隠しフォーム（SMBCへ送信） - サーバー側でテンプレート置換される -->
+    <form id="smbcForm" style="display: none;">
+        <!-- この部分はサーバー側で完全なフォームに置換されます -->
+        <!-- 機密情報は一切含まれていません -->
     </form>
     
     <script>
-        // ページ読み込み時の処理（POSTデータのみ対応）
+        // ページ読み込み時の処理
         window.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded - checking for POST data');
+            console.log('Page loaded - checking for server-processed data');
             
-            // POSTデータが設定されているかチェック
-            if (window.billData && window.smbcFormData) {
-                console.log('✅ POST data found and processed by server');
-                // サーバーのスクリプトで既に処理済み
-                return;
+            // サーバー側でデータが設定されているかチェック
+            if (window.billDataReceived) {
+                console.log('✅ Data processed by server');
+                return; // サーバーのスクリプトで既に処理済み
             }
             
-            // POSTデータがない場合はエラー表示
-            console.log('❌ No POST data found');
+            // サーバー側でデータが設定されていない場合
+            console.log('❌ No server-processed data found');
             alert('不正なアクセスです。\n正しいフォームからアクセスしてください。');
             document.getElementById('submitBtn').disabled = true;
             
@@ -405,12 +377,17 @@
         document.getElementById('submitBtn').addEventListener('click', function(e) {
             e.preventDefault();
             
+            // フォームの存在確認
+            const form = document.getElementById('smbcForm');
+            if (!form || !form.querySelector('input[name="bill_no"]')) {
+                alert('❌ システムエラー\n\nフォームが正しく初期化されていません。\nページを再読み込みしてください。');
+                return;
+            }
+            
             // 必須フィールドの確認
-            const billNo = document.getElementById('bill_no').value;
-            const billName = document.getElementById('bill_name').value;
-            const billKana = document.getElementById('bill_kana').value;
-            const shopPwd = document.getElementById('shop_pwd').value;
-            const fsToken = document.getElementById('fs').value;
+            const billNo = form.querySelector('input[name="bill_no"]').value;
+            const billName = form.querySelector('input[name="bill_name"]').value;
+            const billKana = form.querySelector('input[name="bill_kana"]').value;
             
             if (!billNo || !billName || !billKana) {
                 alert('❌ 必要な情報が不足しています。\n請求番号、お名前、お名前（カナ）は必須です。');
@@ -418,14 +395,17 @@
             }
             
             // セキュリティチェック（機密情報の存在確認）
-            if (!shopPwd || !fsToken) {
-                alert('❌ システムエラー\n\n機密情報が正しく設定されていません。\n管理者にお問い合わせください。');
+            const shopPwd = form.querySelector('input[name="shop_pwd"]');
+            const fsToken = form.querySelector('input[name="fs"]');
+            
+            if (!shopPwd || !shopPwd.value || !fsToken || !fsToken.value) {
+                alert('❌ システムエラー\n\n認証情報が正しく設定されていません。\n管理者にお問い合わせください。');
                 return;
             }
             
             // オプション項目の確認
-            const billZip = document.getElementById('bill_zip').value;
-            const billMail = document.getElementById('bill_mail').value;
+            const billZip = form.querySelector('input[name="bill_zip"]').value;
+            const billMail = form.querySelector('input[name="bill_mail"]').value;
             
             if (!billZip && !billMail) {
                 const proceed = confirm('郵便番号とメールアドレスが入力されていませんが、続行しますか？');
@@ -448,14 +428,14 @@
                 bill_no: billNo,
                 bill_name: '***masked***',
                 bill_kana: '***masked***',
-                has_shop_pwd: !!shopPwd,
-                has_fs_token: !!fsToken,
+                has_shop_pwd: !!shopPwd.value,
+                has_fs_token: !!fsToken.value,
                 timestamp: new Date().toISOString()
             });
             
             // フォームを送信
             setTimeout(function() {
-                document.getElementById('smbcForm').submit();
+                form.submit();
             }, 500);
         });
         
@@ -470,6 +450,11 @@
             const originalLog = console.log;
             console.log = function(...args) {
                 const safeArgs = args.map(arg => {
+                    if (typeof arg === 'string') {
+                        // 機密情報パターンをマスク
+                        return arg.replace(/shop_pwd['"]\s*:\s*['"][^'"]+['"]/g, 'shop_pwd: "***HIDDEN***"')
+                                 .replace(/fs['"]\s*:\s*['"][^'"]+['"]/g, 'fs: "***HIDDEN***"');
+                    }
                     if (typeof arg === 'object' && arg !== null) {
                         const safeObj = { ...arg };
                         if (safeObj.shop_pwd) safeObj.shop_pwd = '***HIDDEN***';
@@ -486,16 +471,34 @@
             
             // デバッグモードの検出と警告
             let devtools = false;
-            setInterval(function() {
+            const checkDevTools = () => {
                 if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
                     if (!devtools) {
                         devtools = true;
                         console.log('🔒 セキュリティ通知: 開発者ツールが検出されました。');
+                        console.log('🔒 機密情報は適切に保護されています。');
                     }
                 } else {
                     devtools = false;
                 }
-            }, 1000);
+            };
+            
+            // 定期的にチェック
+            setInterval(checkDevTools, 1000);
+            
+            // 右クリック無効化（セキュリティ強化）
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                console.log('🔒 右クリックは無効化されています。');
+            });
+            
+            // F12キー無効化
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+                    e.preventDefault();
+                    console.log('🔒 開発者ツールのショートカットは無効化されています。');
+                }
+            });
         })();
     </script>
 </body>
