@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
     <title>振替口座登録</title>
     <style>
         * {
@@ -331,7 +332,7 @@
                     <span class="icon">↩</span>
                     <span>戻る</span>
                 </button>
-                <button type="button" class="button button-web" id="submitBtn">
+                <button type="button" class="button button-web" id="submitBtn" disabled>
                     <span class="icon">💳</span>
                     <span>WEB口座登録へ</span>
                 </button>
@@ -355,10 +356,10 @@
         <input type="hidden" name="bill_no" id="bill_no" value="">
         <input type="hidden" name="bill_name" id="bill_name" value="">
         <input type="hidden" name="bill_kana" id="bill_kana" value="">
-        <input type="hidden" name="bill_zip" value="123-4567">
-        <input type="hidden" name="bill_adr_1" value="東京都">
-        <input type="hidden" name="bill_phon" value="03-1234-5678">
-        <input type="hidden" name="bill_mail" value="wakakusa@smbc-fs.co.jp">
+        <input type="hidden" name="bill_zip" id="bill_zip" value="">
+        <input type="hidden" name="bill_adr_1" id="bill_adr_1" value="">
+        <input type="hidden" name="bill_phon" id="bill_phon" value="">
+        <input type="hidden" name="bill_mail" id="bill_mail" value="">
         <input type="hidden" name="bill_mail_kbn" value="1">
         <input type="hidden" name="redirect_kbn" value="0">
         <input type="hidden" name="redirect_sec" value="10">
@@ -373,27 +374,52 @@
     </form>
     
     <script>
-        // URLパラメータから値を取得
+        // URLパラメータから値を取得（後方互換性のため）
         function getUrlParams() {
             const params = new URLSearchParams(window.location.search);
             return {
                 bill_no: params.get('bill_no'),
                 bill_name: params.get('bill_name'),
-                bill_kana: params.get('bill_kana')
+                bill_kana: params.get('bill_kana'),
+                bill_zip: params.get('bill_zip'),
+                bill_adr_1: params.get('bill_adr_1'),
+                bill_phon: params.get('bill_phon'),
+                bill_mail: params.get('bill_mail')
             };
         }
         
         // ページ読み込み時にパラメータをセット
         window.addEventListener('DOMContentLoaded', function() {
+            // POSTデータが既にセットされている場合はそちらを優先
+            if (window.billData) {
+                console.log('Using POST data - already processed by server');
+                return; // POSTデータのスクリプトで既に処理済み
+            }
+            
+            // URLパラメータを使用（テスト用）
             const params = getUrlParams();
             
             if (params.bill_no && params.bill_name && params.bill_kana) {
+                console.log('Using URL parameters');
                 document.getElementById('bill_no').value = params.bill_no;
                 document.getElementById('bill_name').value = params.bill_name;
                 document.getElementById('bill_kana').value = params.bill_kana;
+                document.getElementById('bill_zip').value = params.bill_zip || '';
+                document.getElementById('bill_adr_1').value = params.bill_adr_1 || '';
+                document.getElementById('bill_phon').value = params.bill_phon || '';
+                document.getElementById('bill_mail').value = params.bill_mail || '';
+                
+                // ボタンを有効化
+                document.getElementById('submitBtn').disabled = false;
             } else {
+                console.log('No valid parameters found');
                 alert('必要なパラメータが不足しています。');
                 document.getElementById('submitBtn').disabled = true;
+            }
+            
+            // URLからのパラメータは履歴から削除（セキュリティ対策）
+            if (window.location.search) {
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
         
@@ -401,12 +427,25 @@
         document.getElementById('submitBtn').addEventListener('click', function(e) {
             e.preventDefault();
             
-            const params = getUrlParams();
+            // 必須フィールドの確認
+            const billNo = document.getElementById('bill_no').value;
+            const billName = document.getElementById('bill_name').value;
+            const billKana = document.getElementById('bill_kana').value;
             
-            // パラメータの再確認
-            if (!params.bill_no || !params.bill_name || !params.bill_kana) {
-                alert('必要な情報が不足しています。前の画面からやり直してください。');
+            if (!billNo || !billName || !billKana) {
+                alert('必要な情報が不足しています。請求番号、お名前、お名前（カナ）は必須です。');
                 return;
+            }
+            
+            // オプション項目の確認（必要に応じて警告）
+            const billZip = document.getElementById('bill_zip').value;
+            const billMail = document.getElementById('bill_mail').value;
+            
+            if (!billZip && !billMail) {
+                const proceed = confirm('郵便番号とメールアドレスが入力されていませんが、続行しますか？');
+                if (!proceed) {
+                    return;
+                }
             }
             
             // ローディング表示
@@ -419,7 +458,7 @@
             // フォームを送信
             setTimeout(function() {
                 document.getElementById('smbcForm').submit();
-            }, 500); // 少し遅延を入れてローディング表示を見せる
+            }, 500);
         });
         
         // タッチデバイスでのホバー効果を防ぐ
