@@ -1,15 +1,25 @@
 {
-  "name": "html-deposit-app",
+  "name": "secure-bill-registration-app",
   "version": "1.0.0",
-  "description": "HTML deposit page",
+  "description": "Secure HTML deposit page with POST support",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "express": "^4.18.0"
   },
   "engines": {
     "node": "18.x"
-  }
+  },
+  "keywords": [
+    "express",
+    "html",
+    "secure",
+    "post"
+  ],
+  "author": "",
+  "license": "ISC"
 }
