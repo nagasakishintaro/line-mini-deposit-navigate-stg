@@ -1,0 +1,15 @@
+{
+  "name": "html-deposit-app",
+  "version": "1.0.0",
+  "description": "HTML deposit page",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
