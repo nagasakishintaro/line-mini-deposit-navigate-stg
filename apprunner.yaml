@@ -3,13 +3,9 @@ runtime: docker
 build:
   commands:
     build:
-      - echo "Building the Docker image..."
+      - echo "Building Docker image..."
 run:
-  runtime-version: latest
   command: nginx -g 'daemon off;'
   network:
     port: 80
     env: PORT
-  env:
-    - name: PORT
-      value: "80"
