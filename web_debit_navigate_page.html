@@ -345,14 +345,17 @@
         </div>
     </div>
     
-    <!-- 隠しフォーム（SMBCへ送信） -->
+    <!-- 隠しフォーム（SMBCへ送信） - すべてサーバーから設定される -->
     <form id="smbcForm" action="https://www.paymentstation.jp/customertest/sf/at/kokkzmoshikomi/begin.do" method="post" accept-charset="Shift_JIS" style="display: none;">
-        <input type="hidden" name="version" value="130">
-        <input type="hidden" name="shop_cd" value="4167125">
-        <input type="hidden" name="syuno_co_cd" value="52975">
-        <input type="hidden" name="shoporder_no" value="999">
-        <input type="hidden" name="shop_pwd" value="zxf92ncmrd8k">
-        <input type="hidden" name="koushin_kbn" value="1">
+        <!-- 固定システム設定 - サーバーから設定される -->
+        <input type="hidden" name="version" id="version" value="">
+        <input type="hidden" name="shop_cd" id="shop_cd" value="">
+        <input type="hidden" name="syuno_co_cd" id="syuno_co_cd" value="">
+        <input type="hidden" name="shoporder_no" id="shoporder_no" value="">
+        <input type="hidden" name="shop_pwd" id="shop_pwd" value="">
+        <input type="hidden" name="koushin_kbn" id="koushin_kbn" value="">
+        
+        <!-- 請求者情報 - POSTデータから設定される -->
         <input type="hidden" name="bill_no" id="bill_no" value="">
         <input type="hidden" name="bill_name" id="bill_name" value="">
         <input type="hidden" name="bill_kana" id="bill_kana" value="">
@@ -360,67 +363,42 @@
         <input type="hidden" name="bill_adr_1" id="bill_adr_1" value="">
         <input type="hidden" name="bill_phon" id="bill_phon" value="">
         <input type="hidden" name="bill_mail" id="bill_mail" value="">
-        <input type="hidden" name="bill_mail_kbn" value="1">
-        <input type="hidden" name="redirect_kbn" value="0">
-        <input type="hidden" name="redirect_sec" value="10">
-        <input type="hidden" name="shop_phon_hyoji_kbn" value="1">
-        <input type="hidden" name="shop_mail_hyoji_kbn" value="1">
-        <input type="hidden" name="bill_method" value="01">
-        <input type="hidden" name="kessai_id" value="0101">
-        <input type="hidden" name="fs" value="1f8be861aca43d80da1a22467cc73fcabbcdeba3fc3789f57d8ccbc418bc4587">
-        <input type="hidden" name="shop_link" value="http://127.0.0.1:8000/api/">
-        <input type="hidden" name="shop_error_link" value="http://18.179.157.221:3000/smbc/error">
-        <input type="hidden" name="shop_res_link" value="https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result">
+        
+        <!-- システム設定続き - サーバーから設定される -->
+        <input type="hidden" name="bill_mail_kbn" id="bill_mail_kbn" value="">
+        <input type="hidden" name="redirect_kbn" id="redirect_kbn" value="">
+        <input type="hidden" name="redirect_sec" id="redirect_sec" value="">
+        <input type="hidden" name="shop_phon_hyoji_kbn" id="shop_phon_hyoji_kbn" value="">
+        <input type="hidden" name="shop_mail_hyoji_kbn" id="shop_mail_hyoji_kbn" value="">
+        <input type="hidden" name="bill_method" id="bill_method" value="">
+        <input type="hidden" name="kessai_id" id="kessai_id" value="">
+        <input type="hidden" name="fs" id="fs" value="">
+        <input type="hidden" name="shop_link" id="shop_link" value="">
+        <input type="hidden" name="shop_error_link" id="shop_error_link" value="">
+        <input type="hidden" name="shop_res_link" id="shop_res_link" value="">
     </form>
     
     <script>
-        // URLパラメータから値を取得（後方互換性のため）
-        function getUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            return {
-                bill_no: params.get('bill_no'),
-                bill_name: params.get('bill_name'),
-                bill_kana: params.get('bill_kana'),
-                bill_zip: params.get('bill_zip'),
-                bill_adr_1: params.get('bill_adr_1'),
-                bill_phon: params.get('bill_phon'),
-                bill_mail: params.get('bill_mail')
-            };
-        }
-        
-        // ページ読み込み時にパラメータをセット
+        // ページ読み込み時の処理（POSTデータのみ対応）
         window.addEventListener('DOMContentLoaded', function() {
-            // POSTデータが既にセットされている場合はそちらを優先
-            if (window.billData) {
-                console.log('Using POST data - already processed by server');
-                return; // POSTデータのスクリプトで既に処理済み
+            console.log('Page loaded - checking for POST data');
+            
+            // POSTデータが設定されているかチェック
+            if (window.billData && window.smbcFormData) {
+                console.log('✅ POST data found and processed by server');
+                // サーバーのスクリプトで既に処理済み
+                return;
             }
             
-            // URLパラメータを使用（テスト用）
-            const params = getUrlParams();
+            // POSTデータがない場合はエラー表示
+            console.log('❌ No POST data found');
+            alert('不正なアクセスです。\n正しいフォームからアクセスしてください。');
+            document.getElementById('submitBtn').disabled = true;
             
-            if (params.bill_no && params.bill_name && params.bill_kana) {
-                console.log('Using URL parameters');
-                document.getElementById('bill_no').value = params.bill_no;
-                document.getElementById('bill_name').value = params.bill_name;
-                document.getElementById('bill_kana').value = params.bill_kana;
-                document.getElementById('bill_zip').value = params.bill_zip || '';
-                document.getElementById('bill_adr_1').value = params.bill_adr_1 || '';
-                document.getElementById('bill_phon').value = params.bill_phon || '';
-                document.getElementById('bill_mail').value = params.bill_mail || '';
-                
-                // ボタンを有効化
-                document.getElementById('submitBtn').disabled = false;
-            } else {
-                console.log('No valid parameters found');
-                alert('必要なパラメータが不足しています。');
-                document.getElementById('submitBtn').disabled = true;
-            }
-            
-            // URLからのパラメータは履歴から削除（セキュリティ対策）
-            if (window.location.search) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
+            // ボタンのテキストを変更してエラー状態を明示
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<span class="icon">❌</span><span>データなし</span>';
+            submitBtn.style.backgroundColor = '#e74c3c';
         });
         
         // WEB口座登録ボタンのクリック処理
@@ -431,13 +409,21 @@
             const billNo = document.getElementById('bill_no').value;
             const billName = document.getElementById('bill_name').value;
             const billKana = document.getElementById('bill_kana').value;
+            const shopPwd = document.getElementById('shop_pwd').value;
+            const fsToken = document.getElementById('fs').value;
             
             if (!billNo || !billName || !billKana) {
-                alert('必要な情報が不足しています。請求番号、お名前、お名前（カナ）は必須です。');
+                alert('❌ 必要な情報が不足しています。\n請求番号、お名前、お名前（カナ）は必須です。');
                 return;
             }
             
-            // オプション項目の確認（必要に応じて警告）
+            // セキュリティチェック（機密情報の存在確認）
+            if (!shopPwd || !fsToken) {
+                alert('❌ システムエラー\n\n機密情報が正しく設定されていません。\n管理者にお問い合わせください。');
+                return;
+            }
+            
+            // オプション項目の確認
             const billZip = document.getElementById('bill_zip').value;
             const billMail = document.getElementById('bill_mail').value;
             
@@ -453,7 +439,19 @@
             this.disabled = true;
             
             // ボタンを押した感触のフィードバック
-            navigator.vibrate && navigator.vibrate(10);
+            if (navigator.vibrate) {
+                navigator.vibrate(10);
+            }
+            
+            // デバッグ情報（個人情報はマスク）
+            console.log('Submitting form with validated data:', {
+                bill_no: billNo,
+                bill_name: '***masked***',
+                bill_kana: '***masked***',
+                has_shop_pwd: !!shopPwd,
+                has_fs_token: !!fsToken,
+                timestamp: new Date().toISOString()
+            });
             
             // フォームを送信
             setTimeout(function() {
@@ -465,6 +463,40 @@
         if ('ontouchstart' in window) {
             document.body.classList.add('touch-device');
         }
+        
+        // セキュリティ: 開発者ツールでの情報漏洩を防ぐ
+        (function() {
+            // コンソールでの機密情報表示を防ぐ
+            const originalLog = console.log;
+            console.log = function(...args) {
+                const safeArgs = args.map(arg => {
+                    if (typeof arg === 'object' && arg !== null) {
+                        const safeObj = { ...arg };
+                        if (safeObj.shop_pwd) safeObj.shop_pwd = '***HIDDEN***';
+                        if (safeObj.fs) safeObj.fs = '***HIDDEN***';
+                        if (safeObj.bill_name) safeObj.bill_name = '***HIDDEN***';
+                        if (safeObj.bill_kana) safeObj.bill_kana = '***HIDDEN***';
+                        if (safeObj.bill_mail) safeObj.bill_mail = '***HIDDEN***';
+                        return safeObj;
+                    }
+                    return arg;
+                });
+                originalLog.apply(console, safeArgs);
+            };
+            
+            // デバッグモードの検出と警告
+            let devtools = false;
+            setInterval(function() {
+                if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
+                    if (!devtools) {
+                        devtools = true;
+                        console.log('🔒 セキュリティ通知: 開発者ツールが検出されました。');
+                    }
+                } else {
+                    devtools = false;
+                }
+            }, 1000);
+        })();
     </script>
 </body>
 </html>
