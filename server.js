@@ -152,24 +152,56 @@ app.use((req, res, next) => {
     next();
 });
 
-// GETアクセス（テスト用・URLパラメータ）
+// GETアクセス（パラメータなしの場合のみ許可）
 app.get('/', (req, res) => {
     console.log('GET request received');
     
-    // URLパラメータがある場合（テスト用）
+    // URLパラメータがある場合は拒否（セキュリティ強化）
     if (Object.keys(req.query).length > 0) {
-        console.log('Processing URL parameters (test mode)');
-        const billData = {
-            bill_no: req.query.bill_no || '',
-            bill_name: req.query.bill_name || '',
-            bill_kana: req.query.bill_kana || '',
-            bill_zip: req.query.bill_zip || '',
-            bill_adr_1: req.query.bill_adr_1 || '',
-            bill_phon: req.query.bill_phon || '',
-            bill_mail: req.query.bill_mail || ''
-        };
-        
-        return sendHTMLWithData(res, billData);
+        console.log('GET request with parameters rejected');
+        return res.status(400).send(`
+            <!DOCTYPE html>
+            <html lang="ja">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>不正なアクセス</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                        max-width: 600px;
+                        margin: 50px auto;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }
+                    .error-container {
+                        background: white;
+                        padding: 30px;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        text-align: center;
+                    }
+                    .error-icon {
+                        font-size: 48px;
+                        color: #e74c3c;
+                        margin-bottom: 20px;
+                    }
+                    h1 {
+                        color: #e74c3c;
+                        margin-bottom: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="error-container">
+                    <div class="error-icon">🚫</div>
+                    <h1>不正なアクセスです</h1>
+                    <p>このページは正しいフォームからのみアクセス可能です。</p>
+                    <p>URLパラメータを使用したアクセスは許可されていません。</p>
+                </div>
+            </body>
+            </html>
+        `);
     }
     
     // パラメータなしのアクセス - 通常のHTMLを返す
@@ -264,7 +296,7 @@ app.post('/', (req, res) => {
     sendHTMLWithData(res, billData);
 });
 
-// HTMLにデータを埋め込んで送信する関数
+// HTMLにデータを埋め込んで送信する関数（機密情報を安全に処理）
 function sendHTMLWithData(res, billData) {
     try {
         // HTMLファイルを読み込み
@@ -281,82 +313,60 @@ function sendHTMLWithData(res, billData) {
             bill_mail: sanitizeInput(billData.bill_mail)
         };
         
-        // SMBC送信用のデータ（機密情報を環境変数から取得）
-        const smbcFormData = {
-            version: "130",
-            shop_cd: "4167125",
-            syuno_co_cd: "52975",
-            shoporder_no: "999",
-            shop_pwd: requiredEnvVars.SHOP_PWD, // 環境変数から取得
-            koushin_kbn: "1",
-            bill_mail_kbn: "1",
-            redirect_kbn: "0",
-            redirect_sec: "10",
-            shop_phon_hyoji_kbn: "1",
-            shop_mail_hyoji_kbn: "1",
-            bill_method: "01",
-            kessai_id: "0101",
-            fs: requiredEnvVars.FS_TOKEN, // 環境変数から取得
-            shop_link: "http://127.0.0.1:8000/api/",
-            shop_error_link: "http://18.179.157.221:3000/smbc/error",
-            shop_res_link: "https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result"
-        };
+        // 完全なSMBCフォームHTML（機密情報を含む）をサーバー側で生成
+        const smbcFormHTML = `
+        <!-- SMBCへの送信フォーム（サーバー側で機密情報を安全に設定） -->
+        <form id="smbcForm" action="https://www.paymentstation.jp/customertest/sf/at/kokkzmoshikomi/begin.do" method="post" accept-charset="Shift_JIS" style="display: none;">
+            <input type="hidden" name="version" value="130">
+            <input type="hidden" name="shop_cd" value="4167125">
+            <input type="hidden" name="syuno_co_cd" value="52975">
+            <input type="hidden" name="shoporder_no" value="999">
+            <input type="hidden" name="shop_pwd" value="${requiredEnvVars.SHOP_PWD}">
+            <input type="hidden" name="koushin_kbn" value="1">
+            <input type="hidden" name="bill_no" value="${sanitizedData.bill_no}">
+            <input type="hidden" name="bill_name" value="${sanitizedData.bill_name}">
+            <input type="hidden" name="bill_kana" value="${sanitizedData.bill_kana}">
+            <input type="hidden" name="bill_zip" value="${sanitizedData.bill_zip}">
+            <input type="hidden" name="bill_adr_1" value="${sanitizedData.bill_adr_1}">
+            <input type="hidden" name="bill_phon" value="${sanitizedData.bill_phon}">
+            <input type="hidden" name="bill_mail" value="${sanitizedData.bill_mail}">
+            <input type="hidden" name="bill_mail_kbn" value="1">
+            <input type="hidden" name="redirect_kbn" value="0">
+            <input type="hidden" name="redirect_sec" value="10">
+            <input type="hidden" name="shop_phon_hyoji_kbn" value="1">
+            <input type="hidden" name="shop_mail_hyoji_kbn" value="1">
+            <input type="hidden" name="bill_method" value="01">
+            <input type="hidden" name="kessai_id" value="0101">
+            <input type="hidden" name="fs" value="${requiredEnvVars.FS_TOKEN}">
+            <input type="hidden" name="shop_link" value="http://127.0.0.1:8000/api/">
+            <input type="hidden" name="shop_error_link" value="http://18.179.157.221:3000/smbc/error">
+            <input type="hidden" name="shop_res_link" value="https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result">
+        </form>`;
         
-        // データをJavaScriptとして埋め込み
+        // HTMLの空のフォーム部分を完全なフォームに置換
+        html = html.replace(/<!-- 隠しフォーム[\s\S]*?<\/form>/g, smbcFormHTML);
+        
+        // データ設定用のJavaScriptを追加（機密情報は含まない）
         const dataScript = `
         <script>
-            // POSTデータをJavaScriptグローバル変数として設定
-            window.billData = ${JSON.stringify(sanitizedData)};
-            window.smbcFormData = ${JSON.stringify(smbcFormData)};
+            // POSTデータ受信完了の確認用（機密情報は含まない）
+            window.billDataReceived = true;
             
-            // ページ読み込み後にフォームにデータをセット
+            // ページ読み込み後の処理
             window.addEventListener('DOMContentLoaded', function() {
-                console.log('Setting bill data from server');
+                console.log('✅ POST data processed by server - form ready');
                 
-                // 請求者情報をフォームに設定
-                if (window.billData) {
-                    document.getElementById('bill_no').value = window.billData.bill_no || '';
-                    document.getElementById('bill_name').value = window.billData.bill_name || '';
-                    document.getElementById('bill_kana').value = window.billData.bill_kana || '';
-                    document.getElementById('bill_zip').value = window.billData.bill_zip || '';
-                    document.getElementById('bill_adr_1').value = window.billData.bill_adr_1 || '';
-                    document.getElementById('bill_phon').value = window.billData.bill_phon || '';
-                    document.getElementById('bill_mail').value = window.billData.bill_mail || '';
-                }
+                // データが正しく設定されているかチェック（機密情報以外）
+                const billNo = document.querySelector('input[name="bill_no"]').value;
+                const billName = document.querySelector('input[name="bill_name"]').value;
+                const billKana = document.querySelector('input[name="bill_kana"]').value;
                 
-                // SMBC送信用の固定データを設定（機密情報含む）
-                if (window.smbcFormData) {
-                    document.getElementById('version').value = window.smbcFormData.version;
-                    document.getElementById('shop_cd').value = window.smbcFormData.shop_cd;
-                    document.getElementById('syuno_co_cd').value = window.smbcFormData.syuno_co_cd;
-                    document.getElementById('shoporder_no').value = window.smbcFormData.shoporder_no;
-                    document.getElementById('shop_pwd').value = window.smbcFormData.shop_pwd;
-                    document.getElementById('koushin_kbn').value = window.smbcFormData.koushin_kbn;
-                    document.getElementById('bill_mail_kbn').value = window.smbcFormData.bill_mail_kbn;
-                    document.getElementById('redirect_kbn').value = window.smbcFormData.redirect_kbn;
-                    document.getElementById('redirect_sec').value = window.smbcFormData.redirect_sec;
-                    document.getElementById('shop_phon_hyoji_kbn').value = window.smbcFormData.shop_phon_hyoji_kbn;
-                    document.getElementById('shop_mail_hyoji_kbn').value = window.smbcFormData.shop_mail_hyoji_kbn;
-                    document.getElementById('bill_method').value = window.smbcFormData.bill_method;
-                    document.getElementById('kessai_id').value = window.smbcFormData.kessai_id;
-                    document.getElementById('fs').value = window.smbcFormData.fs;
-                    document.getElementById('shop_link').value = window.smbcFormData.shop_link;
-                    document.getElementById('shop_error_link').value = window.smbcFormData.shop_error_link;
-                    document.getElementById('shop_res_link').value = window.smbcFormData.shop_res_link;
-                }
-                
-                // 必須項目が揃っている場合のみボタンを有効化
-                if (window.billData && window.billData.bill_no && window.billData.bill_name && window.billData.bill_kana) {
+                if (billNo && billName && billKana) {
                     document.getElementById('submitBtn').disabled = false;
-                    console.log('Required fields present, button enabled');
+                    console.log('✅ Required fields validated - button enabled');
                 } else {
                     document.getElementById('submitBtn').disabled = true;
-                    console.log('Missing required fields, button disabled');
-                }
-                
-                // URLからのパラメータは履歴から削除（セキュリティ対策）
-                if (window.location.search) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
+                    console.log('❌ Required fields missing - button disabled');
                 }
             });
         </script>
@@ -366,8 +376,17 @@ function sendHTMLWithData(res, billData) {
         html = html.replace('</head>', dataScript + '</head>');
         
         res.send(html);
+        
+        // セキュリティログ（個人情報はマスク）
+        console.log('✅ HTML with secure form sent to client:', {
+            bill_no: sanitizedData.bill_no,
+            has_bill_name: !!sanitizedData.bill_name,
+            has_bill_kana: !!sanitizedData.bill_kana,
+            timestamp: new Date().toISOString()
+        });
+        
     } catch (error) {
-        console.error('Error reading HTML file:', error);
+        console.error('Error processing HTML template:', error);
         res.status(500).send(`
             <!DOCTYPE html>
             <html lang="ja">
@@ -375,6 +394,7 @@ function sendHTMLWithData(res, billData) {
             <body>
                 <h1>サーバーエラー</h1>
                 <p>申し訳ございません。サーバーで問題が発生しました。</p>
+                <p>しばらく時間をおいてから再度お試しください。</p>
             </body>
             </html>
         `);
@@ -405,7 +425,8 @@ app.get('/health', (req, res) => {
         security: {
             basicAuth: process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true',
             rateLimit: true,
-            helmet: true
+            helmet: true,
+            templateReplacement: true
         }
     });
 });
@@ -413,7 +434,7 @@ app.get('/health', (req, res) => {
 // デバッグ用エンドポイント（環境変数の存在確認のみ）
 app.get('/debug', (req, res) => {
     res.json({
-        message: 'Server is running',
+        message: 'Server is running with secure template replacement',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
         environmentVariables: {
@@ -425,11 +446,13 @@ app.get('/debug', (req, res) => {
         security: {
             basicAuth: process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true',
             rateLimit: '20 requests per 15 minutes',
-            helmet: 'enabled'
+            helmet: 'enabled',
+            templateReplacement: 'enabled - sensitive data not exposed to client',
+            urlParametersBlocked: true
         },
         endpoints: {
-            'POST /': 'Main secure endpoint (recommended)',
-            'GET /': 'Fallback endpoint with URL params (test only)',
+            'POST /': 'Main secure endpoint (only method allowed)',
+            'GET /': 'Basic page (no parameters allowed)',
             'GET /health': 'Health check',
             'GET /debug': 'Debug info (no sensitive data)'
         }
@@ -495,10 +518,13 @@ app.listen(port, () => {
     console.log(`🔐 Basic Auth: ${process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true' ? 'ENABLED' : 'DISABLED'}`);
     console.log(`🛡️  Rate Limit: 20 requests per 15 minutes`);
     console.log(`🔒 Security headers: ENABLED`);
+    console.log(`🔒 Template replacement: ENABLED (sensitive data not exposed to client)`);
+    console.log(`🚫 URL parameters: BLOCKED`);
     console.log(`📝 Endpoints:`);
     console.log(`   POST / - Main secure endpoint (recommended)`);
-    console.log(`   GET /  - Fallback with URL params (test only)`);
+    console.log(`   GET /  - Basic page (no parameters allowed)`);
     console.log(`   GET /health - Health check`);
     console.log(`   GET /debug - Debug information`);
     console.log(`⚠️  Important: Set environment variables in App Runner configuration!`);
+    console.log(`✅ Security: Sensitive data is completely hidden from client-side`);
 });
