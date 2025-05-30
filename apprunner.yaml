@@ -3,7 +3,7 @@ runtime: docker
 build:
   commands:
     build:
-      - echo "Building Docker image..."
+      - echo "Building Docker image"
 run:
   command: nginx -g 'daemon off;'
   network:
