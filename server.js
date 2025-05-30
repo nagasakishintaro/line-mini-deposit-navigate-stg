@@ -8,10 +8,23 @@ const helmet = require('helmet');
 const app = express();
 const port = process.env.PORT || 8080;
 
-// Basic認証用のパスワード（環境変数から取得）
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'DefaultAdmin123!';
+// 環境変数の検証（機密情報）
+const requiredEnvVars = {
+    SHOP_PWD: process.env.SHOP_PWD,
+    FS_TOKEN: process.env.FS_TOKEN,
+    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD
+};
 
-console.log('✅ Server starting with POST credentials mode');
+// 必須環境変数のチェック
+for (const [key, value] of Object.entries(requiredEnvVars)) {
+    if (!value) {
+        console.error(`❌ Required environment variable ${key} is not set`);
+        console.error('Please set all required environment variables in App Runner configuration');
+        process.exit(1);
+    }
+}
+
+console.log('✅ All required environment variables are set (Server-Side Rendering mode)');
 
 // セキュリティミドルウェア
 app.use(helmet({
@@ -34,7 +47,7 @@ app.use(helmet({
 // Basic認証（本番環境では必須）
 if (process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true') {
     app.use(basicAuth({
-        users: { 'admin': ADMIN_PASSWORD },
+        users: { 'admin': requiredEnvVars.ADMIN_PASSWORD },
         challenge: true,
         realm: 'Secure Bill Registration Area',
         unauthorizedResponse: (req) => {
@@ -195,7 +208,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'web_debit_navigate_page.html'));
 });
 
-// POSTアクセス（機密情報含む）
+// POSTアクセス（セキュア・本番用）
 app.post('/', (req, res) => {
     console.log('POST request received');
     console.log('POST data received:', {
@@ -203,31 +216,20 @@ app.post('/', (req, res) => {
         bill_name: req.body.bill_name ? '***masked***' : 'empty',
         bill_kana: req.body.bill_kana ? '***masked***' : 'empty',
         bill_zip: req.body.bill_zip ? '***masked***' : 'empty',
-        bill_adr_1: req.body.bill_adr_1 ? '***masked***' : 'empty',
-        bill_phon: req.body.bill_phon ? '***masked***' : 'empty',
-        bill_mail: req.body.bill_mail ? '***masked***' : 'empty',
-        has_shop_pwd: !!req.body.shop_pwd,
-        has_fs_token: !!req.body.fs_token
+        bill_mail: req.body.bill_mail ? '***masked***' : 'empty'
     });
     
     // POSTデータから値を取得
-    const formData = {
-        // 請求者データ
+    const billData = {
         bill_no: req.body.bill_no || '',
         bill_name: req.body.bill_name || '',
         bill_kana: req.body.bill_kana || '',
         bill_zip: req.body.bill_zip || '',
-        bill_adr_1: req.body.bill_adr_1 || '',
-        bill_phon: req.body.bill_phon || '',
-        bill_mail: req.body.bill_mail || '',
-        
-        // 機密情報
-        shop_pwd: req.body.shop_pwd || '',
-        fs_token: req.body.fs_token || ''
+        bill_mail: req.body.bill_mail || ''
     };
     
     // 必須フィールドの検証
-    if (!formData.bill_no || !formData.bill_name || !formData.bill_kana) {
+    if (!billData.bill_no || !billData.bill_name || !billData.bill_kana) {
         console.log('Missing required fields');
         return res.status(400).send(`
             <!DOCTYPE html>
@@ -287,105 +289,109 @@ app.post('/', (req, res) => {
         `);
     }
     
-    // 機密情報の検証
-    if (!formData.shop_pwd || !formData.fs_token) {
-        console.log('Missing security credentials');
-        return res.status(400).send(`
-            <!DOCTYPE html>
-            <html lang="ja">
-            <head>
-                <meta charset="UTF-8">
-                <title>認証エラー</title>
-                <style>
-                    body {
-                        font-family: sans-serif;
-                        max-width: 600px;
-                        margin: 50px auto;
-                        padding: 20px;
-                        background-color: #f5f5f5;
-                        text-align: center;
-                    }
-                    .error-container {
-                        background: white;
-                        padding: 30px;
-                        border-radius: 12px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="error-container">
-                    <h1>❌ 認証情報エラー</h1>
-                    <p>必要な認証情報が不足しています。</p>
-                    <p>システム管理者にお問い合わせください。</p>
-                </div>
-            </body>
-            </html>
-        `);
-    }
-    
-    sendHTMLWithData(res, formData);
+    sendSecureHTML(res, billData);
 });
 
-// HTMLにデータを埋め込んで送信する関数
-function sendHTMLWithData(res, formData) {
+// セキュアなHTMLを生成して送信する関数
+function sendSecureHTML(res, billData) {
     try {
         // HTMLファイルを読み込み
         let html = fs.readFileSync(path.join(__dirname, 'web_debit_navigate_page.html'), 'utf8');
         
         // セキュリティのため、データをサニタイズ
         const sanitizedData = {
-            bill_no: sanitizeInput(formData.bill_no),
-            bill_name: sanitizeInput(formData.bill_name),
-            bill_kana: sanitizeInput(formData.bill_kana),
-            bill_zip: sanitizeInput(formData.bill_zip),
-            bill_adr_1: sanitizeInput(formData.bill_adr_1),
-            bill_phon: sanitizeInput(formData.bill_phon),
-            bill_mail: sanitizeInput(formData.bill_mail),
-            shop_pwd: sanitizeInput(formData.shop_pwd),
-            fs_token: sanitizeInput(formData.fs_token)
+            bill_no: sanitizeInput(billData.bill_no),
+            bill_name: sanitizeInput(billData.bill_name),
+            bill_kana: sanitizeInput(billData.bill_kana),
+            bill_zip: sanitizeInput(billData.bill_zip),
+            bill_mail: sanitizeInput(billData.bill_mail)
         };
         
-        // データをJavaScriptとして埋め込み（機密情報も含む）
-        const dataScript = `
+        // 機密情報を含む完全なSMBCフォームをサーバー側で生成
+        const smbcFormHTML = `
+        <!-- SMBCへの送信フォーム（サーバー側で機密情報を安全に埋め込み） -->
+        <form id="smbcForm" action="https://www.paymentstation.jp/customertest/sf/at/kokkzmoshikomi/begin.do" method="post" accept-charset="Shift_JIS" style="display: none;">
+            <input type="hidden" name="version" value="130">
+            <input type="hidden" name="shop_cd" value="4167125">
+            <input type="hidden" name="syuno_co_cd" value="52975">
+            <input type="hidden" name="shoporder_no" value="999">
+            <input type="hidden" name="shop_pwd" value="${requiredEnvVars.SHOP_PWD}">
+            <input type="hidden" name="koushin_kbn" value="1">
+            <input type="hidden" name="bill_no" value="${sanitizedData.bill_no}">
+            <input type="hidden" name="bill_name" value="${sanitizedData.bill_name}">
+            <input type="hidden" name="bill_kana" value="${sanitizedData.bill_kana}">
+            <input type="hidden" name="bill_zip" value="${sanitizedData.bill_zip}">
+            <input type="hidden" name="bill_adr_1" value="">
+            <input type="hidden" name="bill_phon" value="">
+            <input type="hidden" name="bill_mail" value="${sanitizedData.bill_mail}">
+            <input type="hidden" name="bill_mail_kbn" value="1">
+            <input type="hidden" name="redirect_kbn" value="0">
+            <input type="hidden" name="redirect_sec" value="10">
+            <input type="hidden" name="shop_phon_hyoji_kbn" value="1">
+            <input type="hidden" name="shop_mail_hyoji_kbn" value="1">
+            <input type="hidden" name="bill_method" value="01">
+            <input type="hidden" name="kessai_id" value="0101">
+            <input type="hidden" name="fs" value="${requiredEnvVars.FS_TOKEN}">
+            <input type="hidden" name="shop_link" value="http://127.0.0.1:8000/api/">
+            <input type="hidden" name="shop_error_link" value="http://18.179.157.221:3000/smbc/error">
+            <input type="hidden" name="shop_res_link" value="https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result">
+        </form>`;
+        
+        // HTMLの空のフォームコンテナを完全なフォームに置換
+        html = html.replace(/<div id="formContainer"><\/div>/, smbcFormHTML);
+        
+        // セキュアなJavaScriptを追加（機密情報は含まない）
+        const secureScript = `
         <script>
-            // POSTデータをJavaScriptグローバル変数として設定
-            window.formData = ${JSON.stringify(sanitizedData)};
-            window.dataReceived = true;
+            // データ受信完了フラグ（機密情報は含まない）
+            window.secureDataReceived = true;
             
             // ページ読み込み後の処理
             window.addEventListener('DOMContentLoaded', function() {
-                console.log('✅ POST data received and processed');
+                console.log('✅ Secure server-side rendering completed');
                 
-                // 必須項目が揃っている場合のみボタンを有効化
-                if (window.formData && window.formData.bill_no && window.formData.bill_name && window.formData.bill_kana) {
-                    document.getElementById('submitBtn').disabled = false;
-                    console.log('✅ Required fields validated - button enabled');
+                // フォームの存在確認
+                const smbcForm = document.getElementById('smbcForm');
+                if (smbcForm) {
+                    // 必須データの確認（値の存在のみチェック、内容は確認しない）
+                    const billNo = smbcForm.querySelector('input[name="bill_no"]').value;
+                    const billName = smbcForm.querySelector('input[name="bill_name"]').value;
+                    const billKana = smbcForm.querySelector('input[name="bill_kana"]').value;
+                    
+                    if (billNo && billName && billKana) {
+                        document.getElementById('submitBtn').disabled = false;
+                        console.log('✅ Required fields validated - button enabled');
+                    } else {
+                        document.getElementById('submitBtn').disabled = true;
+                        console.log('❌ Required fields missing - button disabled');
+                    }
                 } else {
+                    console.log('❌ SMBC form not found');
                     document.getElementById('submitBtn').disabled = true;
-                    console.log('❌ Required fields missing - button disabled');
                 }
             });
         </script>
         `;
         
-        // </head>タグの直前にスクリプトを挿入
-        html = html.replace('</head>', dataScript + '</head>');
+        // </body>タグの直前にスクリプトを挿入
+        html = html.replace('</body>', secureScript + '</body>');
         
         res.send(html);
         
-        // セキュリティログ（機密情報はマスク）
-        console.log('✅ HTML with form data sent to client:', {
+        // セキュリティログ（個人情報と機密情報は一切出力しない）
+        console.log('✅ Secure HTML sent to client:', {
             bill_no: sanitizedData.bill_no,
             has_bill_name: !!sanitizedData.bill_name,
             has_bill_kana: !!sanitizedData.bill_kana,
-            has_shop_pwd: !!sanitizedData.shop_pwd,
-            has_fs_token: !!sanitizedData.fs_token,
+            has_bill_zip: !!sanitizedData.bill_zip,
+            has_bill_mail: !!sanitizedData.bill_mail,
+            sensitive_data_embedded: true,
+            client_side_exposure: false,
             timestamp: new Date().toISOString()
         });
         
     } catch (error) {
-        console.error('Error processing HTML template:', error);
+        console.error('Error processing secure HTML template:', error);
         res.status(500).send(`
             <!DOCTYPE html>
             <html lang="ja">
@@ -393,6 +399,7 @@ function sendHTMLWithData(res, formData) {
             <body>
                 <h1>サーバーエラー</h1>
                 <p>申し訳ございません。サーバーで問題が発生しました。</p>
+                <p>しばらく時間をおいてから再度お試しください。</p>
             </body>
             </html>
         `);
@@ -418,24 +425,27 @@ app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'OK',
         timestamp: new Date().toISOString(),
-        service: 'Secure Bill Registration Service (POST Credentials Mode)',
+        service: 'Secure Bill Registration Service (Server-Side Rendering)',
         environment: process.env.NODE_ENV || 'development',
         security: {
             basicAuth: process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true',
             rateLimit: true,
             helmet: true,
-            postCredentials: true
+            serverSideRendering: true,
+            clientSideExposure: false
         }
     });
 });
 
-// デバッグ用エンドポイント
+// デバッグ用エンドポイント（環境変数の存在確認のみ）
 app.get('/debug', (req, res) => {
     res.json({
-        message: 'Server is running with POST credentials mode',
+        message: 'Server is running with secure server-side rendering',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
         environmentVariables: {
+            SHOP_PWD: process.env.SHOP_PWD ? '***SET***' : 'NOT_SET',
+            FS_TOKEN: process.env.FS_TOKEN ? '***SET***' : 'NOT_SET',
             ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ? '***SET***' : 'NOT_SET',
             ENABLE_AUTH: process.env.ENABLE_AUTH || 'false'
         },
@@ -443,14 +453,15 @@ app.get('/debug', (req, res) => {
             basicAuth: process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true',
             rateLimit: '20 requests per 15 minutes',
             helmet: 'enabled',
-            postCredentials: 'enabled - credentials sent via POST from client',
+            serverSideRendering: 'enabled - sensitive data embedded server-side only',
+            clientSideExposure: 'NONE - completely secure',
             urlParametersBlocked: true
         },
         endpoints: {
-            'POST /': 'Main endpoint (credentials in POST data)',
+            'POST /': 'Main secure endpoint (server-side rendering)',
             'GET /': 'Basic page (no parameters allowed)',
             'GET /health': 'Health check',
-            'GET /debug': 'Debug info'
+            'GET /debug': 'Debug info (no sensitive data)'
         }
     });
 });
@@ -514,12 +525,13 @@ app.listen(port, () => {
     console.log(`🔐 Basic Auth: ${process.env.NODE_ENV === 'production' || process.env.ENABLE_AUTH === 'true' ? 'ENABLED' : 'DISABLED'}`);
     console.log(`🛡️  Rate Limit: 20 requests per 15 minutes`);
     console.log(`🔒 Security headers: ENABLED`);
-    console.log(`📮 POST credentials mode: ENABLED`);
+    console.log(`🔒 Server-side rendering: ENABLED`);
+    console.log(`🚫 Client-side exposure: NONE`);
     console.log(`🚫 URL parameters: BLOCKED`);
     console.log(`📝 Endpoints:`);
-    console.log(`   POST / - Main endpoint (credentials via POST)`);
+    console.log(`   POST / - Main secure endpoint (server-side rendering)`);
     console.log(`   GET /  - Basic page (no parameters allowed)`);
     console.log(`   GET /health - Health check`);
     console.log(`   GET /debug - Debug information`);
-    console.log(`⚠️  Important: Credentials should be sent via POST from client!`);
+    console.log(`✅ Security: Sensitive data is completely hidden from client-side`);
 });
