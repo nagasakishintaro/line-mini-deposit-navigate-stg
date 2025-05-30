@@ -1,11 +1,12 @@
 version: 1.0
-runtime: docker
+runtime: nodejs18
 build:
   commands:
     build:
-      - echo "Building Docker image"
+      - npm install
 run:
-  command: nginx -g 'daemon off;'
+  runtime-version: 18
+  command: npm start
   network:
-    port: 80
+    port: 8080
     env: PORT
