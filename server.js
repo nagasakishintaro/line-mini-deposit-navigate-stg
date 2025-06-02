@@ -332,8 +332,8 @@ function sendSecureHTML(res, billData) {
             <input type="hidden" name="bill_method" value="01">
             <input type="hidden" name="kessai_id" value="0101">
             <input type="hidden" name="fs" value="${requiredEnvVars.FS_TOKEN}">
-            <input type="hidden" name="shop_link" value="http://127.0.0.1:8000/api/">
-            <input type="hidden" name="shop_error_link" value="http://18.179.157.221:3000/smbc/error">
+            <input type="hidden" name="shop_link" value="https://lactii-kanri.jp/smbc/success">
+            <input type="hidden" name="shop_error_link" value="https://lactii-kanri.jp/smbc/error">
             <input type="hidden" name="shop_res_link" value="https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result">
         </form>`;
         
