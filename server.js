@@ -4,6 +4,7 @@ const fs = require('fs');
 const basicAuth = require('express-basic-auth');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -24,7 +25,46 @@ for (const [key, value] of Object.entries(requiredEnvVars)) {
     }
 }
 
-console.log('✅ All required environment variables are set (Server-Side Rendering mode)');
+console.log('✅ All required environment variables are set (Server-Side Rendering mode with CORS support)');
+
+// CORS設定
+const corsOptions = {
+    origin: function (origin, callback) {
+        // 開発環境では全てのオリジンを許可
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+        
+        // 本番環境では特定のドメインのみ許可
+        const allowedOrigins = [
+            process.env.ALLOWED_ORIGIN_1,
+            process.env.ALLOWED_ORIGIN_2,
+            process.env.ALLOWED_ORIGIN_3,
+            // 追加で許可したいオリジンがあれば環境変数で設定
+        ].filter(Boolean); // 空の値を除外
+        
+        // オリジンが未定義（同一オリジン）または許可リストに含まれる場合
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log(`CORS blocked origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: [
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'X-CSRF-Token'
+    ],
+    credentials: false, // Basic認証を使用する場合はtrueに変更
+    optionsSuccessStatus: 200 // IE11対応
+};
+
+app.use(cors(corsOptions));
 
 // セキュリティミドルウェア
 app.use(helmet({
@@ -142,13 +182,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// セキュリティログ
+// セキュリティログ（CORS情報も含む）
 app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent') || 'Unknown';
+    const origin = req.get('Origin') || 'Same-Origin';
     
-    console.log(`[${timestamp}] ${req.method} ${req.url} - IP: ${ip} - UA: ${userAgent.substring(0, 100)}`);
+    console.log(`[${timestamp}] ${req.method} ${req.url} - IP: ${ip} - Origin: ${origin} - UA: ${userAgent.substring(0, 100)}`);
     next();
 });
 
@@ -332,8 +373,8 @@ function sendSecureHTML(res, billData) {
             <input type="hidden" name="bill_method" value="01">
             <input type="hidden" name="kessai_id" value="0101">
             <input type="hidden" name="fs" value="${requiredEnvVars.FS_TOKEN}">
-            <input type="hidden" name="shop_link" value="https://lactii-kanri.jp/smbc/success">
-            <input type="hidden" name="shop_error_link" value="https://lactii-kanri.jp/smbc/error">
+            <input type="hidden" name="shop_link" value="http://127.0.0.1:8000/api/">
+            <input type="hidden" name="shop_error_link" value="http://18.179.157.221:3000/smbc/error">
             <input type="hidden" name="shop_res_link" value="https://zjtmel28uk.execute-api.ap-northeast-1.amazonaws.com/dev/payment/smbc_stg/result">
         </form>`;
         
@@ -432,7 +473,8 @@ app.get('/health', (req, res) => {
             rateLimit: true,
             helmet: true,
             serverSideRendering: true,
-            clientSideExposure: false
+            clientSideExposure: false,
+            cors: true
         }
     });
 });
@@ -455,7 +497,8 @@ app.get('/debug', (req, res) => {
             helmet: 'enabled',
             serverSideRendering: 'enabled - sensitive data embedded server-side only',
             clientSideExposure: 'NONE - completely secure',
-            urlParametersBlocked: true
+            urlParametersBlocked: true,
+            cors: 'enabled - configurable origins'
         },
         endpoints: {
             'POST /': 'Main secure endpoint (server-side rendering)',
@@ -526,6 +569,7 @@ app.listen(port, () => {
     console.log(`🛡️  Rate Limit: 20 requests per 15 minutes`);
     console.log(`🔒 Security headers: ENABLED`);
     console.log(`🔒 Server-side rendering: ENABLED`);
+    console.log(`🌐 CORS: ENABLED`);
     console.log(`🚫 Client-side exposure: NONE`);
     console.log(`🚫 URL parameters: BLOCKED`);
     console.log(`📝 Endpoints:`);
